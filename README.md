@@ -63,21 +63,28 @@ docker-compose up --build
 
 ### 3. Enviroments (.env)
 ```bash
-BOT_TOKEN=token
+BOT_TOKEN='token'
 
 MINIO_HOST=minio
 MINIO_PORT=9000
 MINIO_ROOT_USER=minioadmin
 MINIO_ROOT_PASSWORD=minioadmin
-MINIO_BUCKET_NAME=bucket-name
+MINIO_BUCKET_NAME=bucket
 
 POSTGRES_DB=clanity_db
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
-POSTGRES_HOST=postgres
+POSTGRES_PASSWORD=postgres 
+POSTGRES_HOST=postgres 
 POSTGRES_PORT=5432
 
-PG_ADMIN_USERNAME=pgadmin@gmail.com
-PG_ADMIN_PASSWORD=password
+PG_ADMIN_USERNAME=pgadmin
+PG_ADMIN_PASSWORD=pgadmin
+
+MONO_TOKEN=token
+
+REDIS_HOST=redis 
+REDIS_URL="${REDIS_HOST}://${REDIS_HOST}:6379/"
+CELERY_BROKER_URL="${REDIS_URL}0"
+
 ```
 
