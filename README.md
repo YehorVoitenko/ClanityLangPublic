@@ -35,7 +35,7 @@ https://linktr.ee/clanity
 ## 📦 Tech Stack
 
 - **Python 3.11**
-- **Celery | Redis** - distributed task queue 
+- **Celery | Redis** - distributed task queue (user notification; scheduled tasks)
 - **SQLAlchemy** – database ORM
 - **PostgreSQL** – database service
 - **Alembic** – database migrations tool
@@ -51,8 +51,8 @@ https://linktr.ee/clanity
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YehorVoitenko/ClanityLang.git
-cd Clanity
+git clone https://github.com/YehorVoitenko/ClanityLangPublic.git
+cd ClanityLangPublic
 ```
 
 ### 2. Run project with docker-compose
