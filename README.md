@@ -14,12 +14,11 @@ https://linktr.ee/clanity
 
 ## 🚀 Features
 
-- 📄 Upload `.xlsx` files with word translations
-- 🧩 Auto-generates quizzes for memorization and testing
-- 🔍 Notifications for inactive
+- 🔍 User notifications by Scheduled Tasks Service 
 - 🤖 Telegram bot interface for convenient interaction
 - 💰 Subscriptions. Integrated MonobankAPI to create subscriptions
-
+- 📄 Upload `.xlsx` files with word translations
+- 🧩 Auto-generates quizzes for memorization and testing
 </br>
 
 ## 📸 Screenshots
