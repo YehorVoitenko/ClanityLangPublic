@@ -8,12 +8,7 @@ from config.bot_config import TOKEN
 from services.bot_services.buttons import ButtonOrchestrator
 
 dispatcher = Dispatcher(storage=MemoryStorage())
-bot = Bot(
-    token=TOKEN,
-    default=DefaultBotProperties(
-        parse_mode=ParseMode.HTML
-    )
-)
+bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
 
 async def initialize_bot() -> None:

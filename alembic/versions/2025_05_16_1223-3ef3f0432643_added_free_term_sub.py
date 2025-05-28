@@ -5,13 +5,14 @@ Revises: 71e4fec78c0e
 Create Date: 2025-05-16 12:23:37.577609
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '3ef3f0432643'
-down_revision: Union[str, None] = '71e4fec78c0e'
+revision: str = "3ef3f0432643"
+down_revision: Union[str, None] = "71e4fec78c0e"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -24,7 +25,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade():
-    op.execute(f"ALTER TYPE usersubscriptionlevels ADD VALUE IF NOT EXISTS 'FREE_TERM';")
+    op.execute(
+        f"ALTER TYPE usersubscriptionlevels ADD VALUE IF NOT EXISTS 'FREE_TERM';"
+    )
 
 
 def downgrade() -> None:

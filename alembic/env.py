@@ -1,8 +1,6 @@
-from datetime import datetime
-
-from sqlalchemy import engine_from_config, pool
 from alembic import context
 from dotenv import load_dotenv
+from sqlalchemy import engine_from_config, pool
 
 from config.database_config import DATABASE_URL
 from models import *
@@ -10,10 +8,7 @@ from models import *
 load_dotenv()
 
 config = context.config
-config.set_main_option(
-    name="sqlalchemy.url",
-    value=DATABASE_URL
-)
+config.set_main_option(name="sqlalchemy.url", value=DATABASE_URL)
 
 
 def get_migration_filename(message):
@@ -44,10 +39,7 @@ def run_migrations_online():
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=SQLModel.metadata
-        )
+        context.configure(connection=connection, target_metadata=SQLModel.metadata)
 
         with context.begin_transaction():
             context.run_migrations()

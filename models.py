@@ -12,6 +12,7 @@ class UserSubscriptionLevels(str, Enum):
     SIMPLE = "SIMPLE"
     START = "START"
     PRO = "PRO"
+    PROMOCODE = "PROMOCODE"
 
 
 class UserFile(SQLModel, table=True):
@@ -34,9 +35,7 @@ class UserFile(SQLModel, table=True):
 class PurchaseRegistry(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    user_id: int = Field(
-        sa_column=Column(BigInteger, index=True, nullable=False)
-    )
+    user_id: int = Field(sa_column=Column(BigInteger, index=True, nullable=False))
     purchase_datetime: datetime = Field(nullable=False)
     invoice_id: str = Field(nullable=False)
 
@@ -55,6 +54,13 @@ class UserData(SQLModel, table=True):
     files: List[UserFile] = Relationship(back_populates="user")
 
 
+class PromocodeRegistry(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    promocode_name: str = Field(nullable=False)
+    days_work: int = Field(nullable=True)
+    activations: int = Field(default=1_000_000, nullable=False)
+
+
 class UserSession(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
@@ -65,7 +71,5 @@ class UserSession(SQLModel, table=True):
             index=True,
         )
     )
-    chat_id: int = Field(
-        sa_column=Column(BigInteger, index=True)
-    )
+    chat_id: int = Field(sa_column=Column(BigInteger, index=True))
     session_datetime: datetime = Field(nullable=False)

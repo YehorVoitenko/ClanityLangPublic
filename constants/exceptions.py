@@ -18,5 +18,9 @@ class NotValidColumnSet(FileExceptions):
     pass
 
 
-class NotValidUserLimit(UserRequestExceptions):
+class UserNotExists(Exception):
+    pass
+
+
+class NotValidPromocodeRequest(Exception):
     pass

@@ -21,7 +21,7 @@ class UserSessionProcessor:
             user_session = UserSession(
                 chat_id=message.chat.id,
                 user_id=message.chat.id,
-                session_datetime=datetime.utcnow()
+                session_datetime=datetime.utcnow(),
             )
             session.add(user_session)
 

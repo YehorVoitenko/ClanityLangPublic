@@ -1,114 +1,129 @@
 from enum import Enum
 
+from constants.constants import INSTAGRAM_LINK
+
 MOTIVATION_PHRASES_FOR_MISTAKES = [
-    "<b>🌱 Almost there! Every mistake is a step toward mastery.</b>",
-    "<b>💡 Don’t worry, you’re learning with every try!</b>",
-    "<b>🚧 Mistakes mean you’re pushing boundaries — keep going!</b>",
-    "<b>✨ Keep it up! Practice makes perfect, one step at a time.</b>",
-    "<b>🔄 Not quite yet, but you’re on the right track!</b>",
-    "<b>🌟 Every error is a chance to grow stronger!</b>",
-    "<b>🛠️ Keep building those skills — you’re doing great!</b>",
-    "<b>🎯 Close! Adjust and try again — you’ve got this!</b>",
-    "<b>📈 Progress isn’t always perfect, but it’s progress!</b>",
-    "<b>🔥 Don’t give up now, you’re heating up your skills!</b>"
+    "<b>🌱 Майже вдалося! Кожна помилка — крок до майстерності.</b>",
+    "<b>💡 Не переймайся, з кожною спробою ти навчаєшся!</b>",
+    "<b>🚧 Помилки означають, що ти ростеш — продовжуй!</b>",
+    "<b>✨ Так тримати! Практика — шлях до ідеалу.</b>",
+    "<b>🔄 Ще не зовсім, але ти на правильному шляху!</b>",
+    "<b>🌟 Кожна помилка — шанс стати кращим!</b>",
+    "<b>🛠️ Продовжуй розвивати навички — все супер!</b>",
+    "<b>🎯 Близько! Виправ і спробуй ще раз — у тебе вийде!</b>",
+    "<b>📈 Прогрес не завжди ідеальний, але це все одно прогрес!</b>",
+    "<b>🔥 Не зупиняйся, твої навички вже «нагріваються»!</b>",
 ]
 
-
-
 SUCCESS_PHRASES = [
-    "<b>🎉 Congratulations! You've completed the quiz.</b>",
-    "<b>🏆 Well done! You nailed it!</b>",
-    "<b>🚀 Great job! You're making awesome progress.</b>",
-    "<b>🌟 Fantastic! You’ve mastered this round.</b>",
-    "<b>👏 Bravo! You’re on fire!</b>",
-    "<b>✅ Success! You’ve finished the quiz like a pro.</b>",
-    "<b>🥳 Woohoo! Another step closer to fluency!</b>",
-    "<b>🔥 You crushed it! Keep up the momentum.</b>",
-    "<b>💪 Impressive! You’re leveling up fast.</b>",
-    "<b>📚 Excellent work! Another quiz in the bag.</b>"
+    "<b>🎉 Вітаємо! Ти пройшов(-ла) вікторину.</b>",
+    "<b>🏆 Молодець! Усе вийшло на відмінно!</b>",
+    "<b>🚀 Класна робота! Ти гарно просуваєшся.</b>",
+    "<b>🌟 Фантастично! Ти впорався з цим раундом.</b>",
+    "<b>👏 Браво! Ти — справжня зірка!</b>",
+    "<b>✅ Успіх! Ти завершив(-ла) вікторину як профі.</b>",
+    "<b>🥳 Ура! Ще один крок до вільного володіння мовою!</b>",
+    "<b>🔥 Цей раунд знищено! Продовжуй у тому ж дусі.</b>",
+    "<b>💪 Вражає! Ти дуже швидко прогресуєш.</b>",
+    "<b>📚 Чудова робота! Ще одна вікторина позаду.</b>",
 ]
 
 USER_NOTIFICATIONS = [
-    "<b>👋 Hey there! Your English journey is waiting for you at Clanity. Let’s keep going!</b>",
-    "<b>📚 Ready to learn some new words today? \nI’m here when you are!</b>",
-    "<b>⏳ Haven’t seen you in a while! Your progress is calling—let’s jump back in!</b>",
-    "<b>🎯 Your next English challenge is ready. \nLet’s level up together!</b>",
-    "<b>🧠 Just a few minutes a day keeps the forgotten words away. \n\nCome back to Clanity!</b>",
-    "<b>✨ You’ve made great progress so far. \nLet’s not stop now!</b>",
-    "<b>💬 Want to practice a few quick words? I’ve got a quiz ready just for you!</b>",
-    "<b>📈 Remember your goals? You're closer than you think. Let’s continue!</b>",
-    "<b>🙌 I’m still here, ready to help you grow your English skills. \n\nJoin me anytime!</b>",
-    "<b>🚀 Every day you learn a little more. \nLet’s keep the streak going!</b>"
+    "<b>👋 Привіт! Твоя подорож в англійську чекає на тебе в Clanity. Погнали далі!</b>",
+    "<b>📚 Готовий(-а) вивчити нові слова сьогодні? Я на місці!</b>",
+    "<b>⏳ Давно не бачилися! Твій прогрес чекає — давай повертаймося!</b>",
+    "<b>🎯 Нове завдання з англійської вже готове. Піднімемо рівень разом!</b>",
+    "<b>🧠 Лише кілька хвилин на день — і слова не забудуться 😌\n\nПовернись до Clanity!</b>",
+    "<b>✨ Ти вже досяг(-ла) класного прогресу. Не зупиняйся!</b>",
+    "<b>💬 Хочеш швиденько потренуватися? У мене є вікторина саме для тебе!</b>",
+    "<b>📈 Пам’ятаєш свою мету? Ти ближче, ніж думаєш. Продовжуй!</b>",
+    "<b>🙌 Я все ще тут, готовий допомогти вивчати англійську. \n\nПриєднуйся будь-коли!</b>",
+    "<b>🚀 Щодня ти вивчаєш трохи більше. \nТримай темп!</b>",
 ]
 
 SIMPLE_SUB_DESCRIPTION = (
-    "<b>SIMPLE subscription level</b>🤩\n\n"
-    "This level allows you to <u><b>add your own files (.xlsx)</b></u> with words and <u><b>learn them in quiz mode</b></u>🤩. \n"
-    "<i>*with unlimited rounds)</i>\n\n"
-    "We can also <u><b>save your favorite file</b></u> to make your learning easier, simpler and more comfortable"
-
-    "<b>Clanity is an easy way to learn new words:\n</b>"
-    "<i>- any language you need</i>\n"
-    "<i>- everywhere</i>\n"
-    "<i>- any time</i>"
+    "<b>Рівень підписки SIMPLE</b>🤩\n\n"
+    "Цей рівень дозволяє <u><b>додавати власні файли (.xlsx)</b></u> зі словами та <u><b>вивчати їх у режимі вікторини</b></u> 🤩.\n"
+    "<i>*з необмеженою кількістю раундів</i>\n\n"
+    "Ми також можемо <u><b>зберегти ваш улюблений файл</b></u>, щоб зробити навчання простішим, зручнішим і комфортнішим.\n\n"
+    "<b>Clanity — це легкий спосіб вивчати нові слова:</b>\n"
+    "<i>- будь-яка мова, яка вам потрібна</i>\n"
+    "<i>- будь-де</i>\n"
+    "<i>- будь-коли</i>"
 )
 
 START_SUB_DESCRIPTION = (
-    "<b>START subscription level</b>🚀\n\n"
-    "This level includes everything from the <u><b>Simple subscription</b></u>: \n"
-    "— the ability to <u><b>add your own files (.xlsx)</b></u> with words\n"
-    "— <u><b>learn them in quiz mode</b></u> with <i>unlimited rounds</i> 🤩\n"
-    "— <u><b>save your favorite file</b></u> for easier and more comfortable learning\n\n"
-
-    "<b>PLUS ➕</b> you get access to a <u><b>library of 1000+ preloaded A1–A2 level words</b></u>, carefully selected for beginner learners 🌱\n"
-    "Start learning immediately – no need to prepare your own wordlists!\n\n"
-    "<b>Clanity is an easy way to learn new words:</b>\n"
-    "<i>- any language you need</i>\n"
-    "<i>- everywhere</i>\n"
-    "<i>- any time</i>"
+    "<b>Рівень підписки START</b>🚀\n\n"
+    "Цей рівень включає все з <u><b>підписки Simple</b></u>:\n"
+    "— можливість <u><b>додавати власні файли (.xlsx)</b></u> зі словами\n"
+    "— <u><b>вивчати їх у режимі вікторини</b></u> з <i>необмеженою кількістю раундів</i> 🤩\n"
+    "— <u><b>зберігати улюблений файл</b></u> для простішого й комфортнішого навчання\n\n"
+    "<b>ДОДАТКОВО ➕</b> ви отримуєте доступ до <u><b>бібліотеки з 1000+ попередньо завантажених слів рівнів A1–A2</b></u>, ретельно відібраних для початківців 🌱\n"
+    "<u><b>тематичні ігри зі словами</b></u> 😍\n"
+    "Починайте навчання одразу — не потрібно готувати власні списки слів!\n\n"
+    "<b>Clanity — це легкий спосіб вивчати нові слова:</b>\n"
+    "<i>- будь-яка мова, яка вам потрібна</i>\n"
+    "<i>- будь-де</i>\n"
+    "<i>- будь-коли</i>"
 )
 
 PRO_SUB_DESCRIPTION = (
-    "<b>PRO subscription level</b>👑\n\n"
-
-    "You get everything from <u><b>Simple</b></u> and <u><b>Start</b></u> subscriptions:\n"
-    "— <u><b>add your own files (.xlsx)</b></u> and learn in <b>quiz mode</b> 🤩\n"
-    "— <u><b>save your favorite file</b></u> for comfort\n"
-    "— access to <u><b>1000+ ready-to-learn words (A1–A2)</b></u> 🌱\n\n"
-
-    "<b>PLUS ULTRA ➕</b> You unlock the full vocabulary power –\n"
-    "<u><b>2000+ words</b></u> covering all CEFR levels: <b>B1 → C2</b> 💪\n"
-    "Master words for travel, work, study, and fluent daily conversations.\n"
-    "<i>No matter your level — you're fully covered.</i>\n\n"
-    "<b>Clanity is an easy way to learn new words:</b>\n"
-    "<i>- any language you need</i>\n"
-    "<i>- everywhere</i>\n"
-    "<i>- any time</i>"
+    "<b>Рівень підписки PRO</b>👑\n\n"
+    "Ви отримуєте все з підписок <u><b>Simple</b></u> та <u><b>Start</b></u>:\n"
+    "— <u><b>додавайте власні файли (.xlsx)</b></u> і вивчайте слова в <b>режимі вікторини</b> 🤩\n"
+    "— <u><b>зберігайте улюблений файл</b></u> для комфорту\n"
+    "— доступ до <u><b>1000+ готових до вивчення слів (рівні A1–A2)</b></u> 🌱\n\n"
+    "— <u><b>ігри з тематичними словами</b></u> 🌱\n\n"
+    "<b>ДОДАТКОВО ➕</b> Ви відкриваєте повну потужність словникового запасу —\n"
+    "<u><b>2000+ слів</b></u>, що охоплюють усі рівні CEFR: <b>B1 → C2</b> 💪\n"
+    "Опановуйте слова для подорожей, роботи, навчання та вільного спілкування.\n"
+    "<i>Незалежно від вашого рівня — ви повністю підготовлені.</i>\n\n"
+    "<b>Clanity — це легкий спосіб вивчати нові слова:</b>\n"
+    "<i>- будь-яка мова, яка вам потрібна</i>\n"
+    "<i>- будь-де</i>\n"
+    "<i>- будь-коли</i>"
 )
 
 
 class InteractivePhrases(Enum):
-    WELCOME_MESSAGE = "Welcome! Use to start a vocabulary quiz from an Excel file."
-    LOW_SUBSCRIPTION_LEVEL = "Sorry(\n\n<u><b>You subscription is low.</b></u> To use this quiz type you have to buy next level of subscription🙌"
-    SUBSCRIPTION_LIST_MESSAGE = "Hi 👋\n \nHere our subscription list. You can tap on each you want and get more information about it.\n"
-    SET_LIMIT = "Please enter the number of words you want in the quiz:"
-    SUCCESS_SET_LIMIT = "✅ Limit set. Starting the quiz..."
-    WRONG_SET_LIMIT = "❌ Please enter a valid number (e.g., 10, 20)."
-    ASK_TO_SEND_FILE = "📝 Got it! I’ll quiz you on your words. Now send me the Excel file. \n\n<i>*You can forward already send file from our chat)</i>"
-    START_QUIZ = "✅ Loaded {len_of_pairs} words.\n🎯 Quiz length: {limit} rounds\n\n"
-    FINISH_QUIZ = "✅ Quiz finished! 🎉"
-    START_FIRST_QUIZ_WORD = "✅ Translate this word:\n\n👉 <b>{current_word}</b>"
-    CORRECT_USER_WORD = "✅ Correct!\n\nTranslate this word:\nThe next word is 👉 <b>{next_original_word}</b>"
-    INCORRECT_USER_WORD = "❌ Incorrect. The correct answer is: <b>{correct_answer}</b>\n\nThe next word is 👉 <b>{next_word}</b>"
-    PASSED_USER_WORD = "The correct answer was: <b>{correct_answer}</b>\n\nThe next word is 👉 <b>{next_word}</b>"
-    WRONG_FILE_CONTENT_QUANTITY = "⚠️ The file only contains {len_of_pairs} entries, but you requested {limit}.\n I will use the full list instead."
-    EMPTY_FILE = "❌ File not found. Please restart the quiz."
-    SUCCESS_GET_PREVIOUS_FILE = "✅ Previous file was loaded from server"
-    SUCCESS_PURCHASE_PAYMENT = "✅ SUCCESS PURCHASE"
-    STOP_QUIZ = "🛑 The quiz was stopped"
+    WELCOME_MESSAGE = (
+        "Привіііііт))👋\nОбирай будь-який рівень гри) маю надію, що тобі сподобається😌"
+    )
+    LOW_SUBSCRIPTION_LEVEL = "Вибач(\n\n<b>Твоя підписка не дозволяє це.</b> Щоб використовувати цей тип вікторини, потрібно перейти на вищий рівень 🙌"
+    SUBSCRIPTION_LIST_MESSAGE = "Привіт 👋\n\nОсь список наших підписок. Натисни на будь-яку, щоб дізнатися більше."
+    SUCCESS_SET_LIMIT = "✅ Починаємо вікторину..."
+    ASK_TO_SEND_FILE = "📝 Чудово! Зараз я перевірю тебе на словах. Надішли мені Excel-файл. \n\n<i>*Можеш переслати вже надісланий файл з нашого чату)</i>"
+    START_QUIZ = "✅ Єєєє, погнали!\nЩоб зупинити гру — напиши команду \n\n/stop_quiz\n\n <i>або натисни кнопку 'Зупинити вікторину' у меню</i>"
+    FINISH_QUIZ = "✅ Вікторина завершена! 🎉"
+    START_FIRST_QUIZ_WORD = "✅ Переклади це слово:\n\n👉 <b>{current_word}</b>"
+    CORRECT_USER_WORD = "✅ Правильно!\n\nНаступне слово 👉 <b>{next_original_word}</b>"
+    INCORRECT_USER_WORD = "❌ Неправильно. Правильна відповідь: <b>{correct_answer}</b>\n\nНаступне слово 👉 <b>{next_word}</b>"
+    PASSED_USER_WORD = "Правильна відповідь була: <b>{correct_answer}</b>\n\nНаступне слово 👉 <b>{next_word}</b>"
+    EMPTY_FILE = "❌ Файл не знайдено. Будь ласка, перезапусти вікторину."
+    SUCCESS_GET_PREVIOUS_FILE = "✅ Попередній файл завантажено з сервера"
+    SUCCESS_PURCHASE_PAYMENT = "✅ Успішна покупка"
+    STOP_QUIZ = "🛑 Вікторина зупинена"
+    ADD_PROMOCODE = "**Вау😍 Чекаю на твій промокод))**"
     INSTRUCTION = (
-        "📖 *How to Use Clanity Bot*\n\n"
-        "1️⃣ Send me a `.xlsx` file with word translations.\n"
-        "2️⃣ Write translations for quiz words.\n\n"
-        "📂 Here's an example file to help you get started 👇"
+        "🙋\n\n"
+        "Clanity – це платформа, котра допоможе тобі вивчати нові слова англійською \n"
+        "<i> - будь-де</i>\n"
+        "<i> - будь-коли</i>\n\n"
+        "ти можеш використовувати різні типу ігор, відповідно до своєї рівню своєї підписки, "
+        "але якщо ти тільки хочеш спробувати, побачити що цей сервіс може - "
+        "<u><b>ми даруємо тобі три дні PRO підписки</b></u>😍"
+    )
+
+    FILE_SEND_INSTRUCTION = (
+        "📖 *Як користуватись цим режимом?*\n\n"
+        "1️⃣ Надішли мені `.xlsx` файл зі словами та перекладами\n"
+        "2️⃣ Я буду показувати слова — ти пиши переклад\n\n"
+        "_Просто скинь файл і я вже готовий)_\n"
+        "📂 Ось приклад файлу, щоб почати 👇"
+    )
+    HELP = (
+        "Дякую за повідомлення 🤍\n\n"
+        "Якщо ти знайшов(-ла) помилку або проблему, напиши нам у соцмережах:\n\n"
+        f'Instagram: <a href="{INSTAGRAM_LINK}">@clanity.lang</a>\n'
+        "Gmail: clanityhelp@gmail.com"
     )

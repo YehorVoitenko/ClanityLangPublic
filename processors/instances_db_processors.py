@@ -1,7 +1,7 @@
-from aiogram.types import Message
 from sqlalchemy.orm import Session
 from sqlmodel import select
 
+from api.routers.user.schemas import CreateUserRequest
 from models import UserData, UserFile
 from services.database import get_database_session
 
@@ -19,7 +19,9 @@ class UserDBProcessor:
 
         return None
 
-    def create_user(self, user_id: int, username: str | None = None, commit: bool = True):
+    def create_user(
+            self, user_id: int, username: str | None = None, commit: bool = True
+    ):
         new_user = UserData(user_id=user_id, username=username)
         self._session.add(new_user)
         self._session.flush()
@@ -30,12 +32,12 @@ class UserDBProcessor:
 
         return None
 
-    def create_user_if_not_exists(self, message: Message):
-        user_instance = self.get_user_by_id(user_id=message.chat.id)
+    def create_user_if_not_exists(self, user_data: CreateUserRequest):
+        user_instance = self.get_user_by_id(user_id=user_data.user_id)
         if user_instance:
             return
 
-        self.create_user(user_id=message.chat.id, username=message.from_user.username)
+        self.create_user(user_id=user_data.user_id, username=user_data.username)
 
 
 class FileDBProcessor:
