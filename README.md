@@ -23,8 +23,7 @@ https://linktr.ee/clanity
 
 ## 📸 Screenshots
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/30e36d6e-4fc8-4d2b-9788-9b36288f137c" alt="screenshot 1" width="45%" />
-  <img src="https://github.com/user-attachments/assets/7bd3fd47-5cd0-465a-bb20-61d36ebab4ae" alt="screenshot 2" width="45%" />
+  <img src="https://github.com/user-attachments/assets/f6879e88-47b0-401c-92d2-edfc06107e24" width="1000"/>
 </p>
 
 
@@ -34,6 +33,7 @@ https://linktr.ee/clanity
 ## 📦 Tech Stack
 
 - **Python 3.11**
+- **FastAPI** - API service for processing
 - **Celery | Redis** - distributed task queue (user notification; scheduled tasks)
 - **SQLAlchemy** – database ORM
 - **PostgreSQL** – database service
@@ -84,6 +84,8 @@ MONO_TOKEN=token
 REDIS_HOST=redis 
 REDIS_URL="${REDIS_HOST}://${REDIS_HOST}:6379/"
 CELERY_BROKER_URL="${REDIS_URL}0"
+
+API_URL=fastapi_app:8000
 
 ```
 
