@@ -38,7 +38,7 @@ class PromocodeProcessor:
                 session.add(user)
 
             user.subscription_level = UserSubscriptionLevels.PROMOCODE
-            user.subscription_date = datetime.utcnow()
+            user.subscription_date = datetime.now()
 
             promocode.activations -= 1
 

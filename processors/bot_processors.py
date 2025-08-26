@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import random
 import tempfile
@@ -10,20 +11,28 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Document, Message, File
 from pandas.core.interchange.dataframe_protocol import DataFrame
 
-from bot.processors.subscription_processor import SubscriptionProcessor
 from config.storage_service_config import MINIO_BUCKET_NAME
 from constants.constants import AVAILABLE_FILE_FORMATS
 from constants.enums import StateKeys
 from constants.exceptions import NotValidFileContentType, NotValidColumnSet
-from constants.phrases import InteractivePhrases, SUCCESS_PHRASES
-from models import UserSubscriptionLevels
+from constants.phrases import (
+    InteractivePhrases,
+    SUCCESS_PHRASES,
+    CORRECT_WORD_PHRASES,
+    MOTIVATION_PHRASES_FOR_MISTAKES,
+)
 from processors.instances_db_processors import FileDBProcessor
-from processors.purchase_processor import PurchaseProcessor, CheckUserActionByCurrentSub
+from processors.user_activity_processor import UserActivityProcessor
 from services.bot_services.bot_initializer import bot
 from services.bot_services.buttons import ButtonOrchestrator
 from services.bot_services.states import AvailableStates
+from services.cache_service.cache_service import words_redis_client
+from services.cache_service.schemas import WordsCache
 from services.database import get_database_session
+from services.gpt_service.client import make_check_prompt, ask_gpt_async
 from services.storage_service import storage_client
+
+logging.basicConfig(level=logging.INFO)
 
 
 class FileValidator:
@@ -64,17 +73,23 @@ class QuizProcessor(FileValidator):
             )
             return
 
-        await message.answer(InteractivePhrases.EMPTY_FILE.value)
+        await message.answer(
+            InteractivePhrases.EMPTY_FILE.value, disable_notification=True
+        )
         await state.clear()
         return
 
     @classmethod
     async def ask_user_to_send_file(cls, message: Message) -> None:
-        await message.answer(InteractivePhrases.ASK_TO_SEND_FILE.value)
+        await message.answer(
+            text=InteractivePhrases.ASK_TO_SEND_FILE.value, disable_notification=True
+        )
 
     @classmethod
     async def success_file_get(cls, message: Message) -> None:
-        await message.answer(InteractivePhrases.ASK_TO_SEND_FILE.value)
+        await message.answer(
+            text=InteractivePhrases.ASK_TO_SEND_FILE.value, disable_notification=True
+        )
 
     @classmethod
     async def process_user_new_file(cls, message: Message, state: FSMContext):
@@ -90,7 +105,9 @@ class QuizProcessor(FileValidator):
             )
         except Exception as e:
             print("FILE VALIDATION ERROR", str(e))
-            await message.answer(InteractivePhrases.EMPTY_FILE.value)
+            await message.answer(
+                text=InteractivePhrases.EMPTY_FILE.value, disable_notification=True
+            )
             return
 
         await cls.start_quiz_with_valid_file_data(
@@ -164,7 +181,6 @@ class QuizProcessor(FileValidator):
             if file_response:
                 file_response.close()
                 file_response.release_conn()
-
         await cls.start_quiz_with_valid_file_data(
             state=state, message=message, file_data_in_bytes=file_data_in_bytes
         )
@@ -190,6 +206,7 @@ class QuizProcessor(FileValidator):
             data=buf,
             length=buf.getbuffer().nbytes,
         )
+        UserActivityProcessor.user_added_file(message.chat.id)
 
         file_link_in_minio = storage_client.presigned_get_object(
             MINIO_BUCKET_NAME, object_name
@@ -209,14 +226,9 @@ class QuizProcessor(FileValidator):
         try:
             df = pd.read_excel(BytesIO(file_data.read()))
             word_pairs = dict(df.itertuples(index=False, name=None))
-
-            state_data = await state.get_data()
             word_pairs = list(word_pairs.items())
-
             random.shuffle(word_pairs)
-
             word_pairs = dict(word_pairs)
-
             current_word = random.choice(list(word_pairs.keys()))
 
             await state.set_data(
@@ -230,15 +242,17 @@ class QuizProcessor(FileValidator):
             await state.set_state(AvailableStates.process_user_word_answer)
 
             await message.answer(
-                InteractivePhrases.START_QUIZ.value.format(
+                text=InteractivePhrases.START_QUIZ.value.format(
                     len_of_pairs=len(word_pairs),
-                )
+                ),
+                disable_notification=True,
             )
             await message.answer(
                 text=InteractivePhrases.START_FIRST_QUIZ_WORD.value.format(
                     current_word=current_word,
                 ),
                 reply_markup=ButtonOrchestrator.generate_word_buttons(),
+                disable_notification=True,
             )
         except Exception as e:
             await message.answer(f"Failed to read Excel file: {e}")
@@ -261,21 +275,38 @@ class QuizProcessor(FileValidator):
         current_word: str = state_data.get(StateKeys.CURRENT_WORD.value)
 
         if not quiz_data or not current_word:
-            await message.answer(InteractivePhrases.FINISH_QUIZ.value)
+            await message.answer(
+                text=InteractivePhrases.FINISH_QUIZ.value, disable_notification=True
+            )
             await ButtonOrchestrator.set_menu_buttons(bot)
             await state.clear()
             return
 
-        correct_answer = str(quiz_data[current_word]).strip().lower()
-        user_answer = message.text.strip().lower()
-        correct_answer = cls.normalize_apostrophes(correct_answer)
-        user_answer = cls.normalize_apostrophes(user_answer)
+        correct_translation = str(quiz_data[current_word]).strip().lower()
+        correct_translation = cls.normalize_apostrophes(correct_translation)
+        user_translation = message.text.strip().lower()
+        user_translation = cls.normalize_apostrophes(user_translation)
 
-        if user_answer == correct_answer:
+        prompt = make_check_prompt(
+            word=current_word,
+            correct_translation=correct_translation,
+            user_translation=user_translation,
+        )
+        result = await ask_gpt_async(prompt=prompt)
+
+        if result.startswith("✅") or result.startswith("ℹ"):
+            UserActivityProcessor.user_write_correct_word(
+                message.chat.id,
+                original_word=current_word,
+                translated_word=user_translation,
+            )
+
             quiz_data.pop(current_word)
 
             if not quiz_data:
-                await message.answer(random.choice(SUCCESS_PHRASES))
+                await message.answer(
+                    text=random.choice(SUCCESS_PHRASES), disable_notification=True
+                )
                 await ButtonOrchestrator.set_menu_buttons(bot)
                 await state.clear()
                 return
@@ -290,26 +321,32 @@ class QuizProcessor(FileValidator):
             )
 
             await message.answer(
-                InteractivePhrases.CORRECT_USER_WORD.value.format(
-                    next_original_word=next_word,
-                ),
+                text=f"{random.choice(CORRECT_WORD_PHRASES)}\n\n"
+                     f"{InteractivePhrases.CORRECT_USER_WORD.value.format(next_original_word=next_word)}",
                 reply_markup=ButtonOrchestrator.generate_word_buttons(),
+                disable_notification=True,
             )
 
         else:
+            UserActivityProcessor.user_write_wrong_word(
+                message.chat.id,
+                original_word=current_word,
+                translated_word=user_translation,
+            )
             await message.answer(
-                InteractivePhrases.INCORRECT_USER_WORD.value.format(
-                    correct_answer=correct_answer, next_word=current_word
-                )
+                text=f"{random.choice(MOTIVATION_PHRASES_FOR_MISTAKES)}\n\n"
+                     f"{InteractivePhrases.INCORRECT_USER_WORD.value.format(correct_answer=correct_translation, next_word=current_word)}",
+                disable_notification=True,
             )
 
     @staticmethod
     async def stop_quiz(message: Message, state: FSMContext):
         if message.text:
             if message.text.strip().lower() == "/stop_quiz":
+                UserActivityProcessor.stopped_quiz(user_id=message.chat.id)
                 await state.clear()
                 await message.answer(
-                    text=InteractivePhrases.STOP_QUIZ.value,
+                    text=InteractivePhrases.STOP_QUIZ.value, disable_notification=True
                 )
                 return True
 
@@ -317,194 +354,127 @@ class QuizProcessor(FileValidator):
 
     @staticmethod
     async def start_quiz_with_b1_words(message: Message, state: FSMContext):
-        PurchaseProcessor.check_purchase_status(
-            user_id=message.chat.id, session=next(get_database_session())
+        b1_words_from_cache = words_redis_client.get(
+            name=WordsCache.B_LEVEL_WORDS.value,
         )
-        need_sub_levels = [
-            UserSubscriptionLevels.FREE_TERM,
-            UserSubscriptionLevels.PRO,
-            UserSubscriptionLevels.PROMOCODE,
-        ]
+        if b1_words_from_cache:
+            file_data_in_bytes = b1_words_from_cache
 
-        if await PurchaseProcessor.compare_user_action_with_sub_level(
-                request=CheckUserActionByCurrentSub(
-                    user_id=message.chat.id, required_sub_levels=need_sub_levels
-                )
-        ):
+        else:
             file_path = "constants/files/B1 LEVEL WORDS.xlsx"
-            file_content_type = os.path.splitext(file_path)[1]
 
             with open(file_path, "rb") as file:
                 file_data_in_bytes = file.read()
 
-            await QuizProcessor.process_xlsx_file(
-                message=message,
-                file_content_type=file_content_type,
-                state=state,
-                file_data_in_bytes=file_data_in_bytes,
+            words_redis_client.set(
+                name=WordsCache.B_LEVEL_WORDS.value,
+                value=file_data_in_bytes,
+            )
+            file_data_in_bytes = words_redis_client.get(
+                name=WordsCache.B_LEVEL_WORDS.value,
             )
 
-        else:
-            await message.answer(
-                InteractivePhrases.LOW_SUBSCRIPTION_LEVEL.value,
-                reply_markup=ButtonOrchestrator.set_subscription_buttons(),
-            )
-            return
+        await QuizProcessor.process_xlsx_file(
+            message=message,
+            file_content_type=".xlsx",
+            state=state,
+            file_data_in_bytes=file_data_in_bytes,
+        )
 
     @staticmethod
     async def start_quiz_with_a2_words(message: Message, state: FSMContext):
-        PurchaseProcessor.check_purchase_status(
-            user_id=message.chat.id, session=next(get_database_session())
+        a2_words_from_cache = words_redis_client.get(
+            name=WordsCache.A_LEVEL_WORDS.value,
         )
-        need_sub_levels = [
-            UserSubscriptionLevels.FREE_TERM,
-            UserSubscriptionLevels.START,
-            UserSubscriptionLevels.PRO,
-            UserSubscriptionLevels.PROMOCODE,
-        ]
+        if a2_words_from_cache:
+            file_data_in_bytes = a2_words_from_cache
 
-        if await PurchaseProcessor.compare_user_action_with_sub_level(
-                request=CheckUserActionByCurrentSub(
-                    user_id=message.chat.id, required_sub_levels=need_sub_levels
-                )
-        ):
+        else:
             file_path = "constants/files/A2 LEVEL WORDS.xlsx"
-            file_content_type = os.path.splitext(file_path)[1]
 
             with open(file_path, "rb") as file:
                 file_data_in_bytes = file.read()
 
-            await QuizProcessor.process_xlsx_file(
-                message=message,
-                file_content_type=file_content_type,
-                state=state,
-                file_data_in_bytes=file_data_in_bytes,
+            words_redis_client.set(
+                name=WordsCache.A_LEVEL_WORDS.value,
+                value=file_data_in_bytes,
             )
 
-        else:
-            await message.answer(
-                InteractivePhrases.LOW_SUBSCRIPTION_LEVEL.value,
-                reply_markup=ButtonOrchestrator.set_subscription_buttons(),
-            )
-            return
+        await QuizProcessor.process_xlsx_file(
+            message=message,
+            file_content_type=".xlsx",
+            state=state,
+            file_data_in_bytes=file_data_in_bytes,
+        )
 
     @staticmethod
-    async def start_quiz_with_travel_words(message: Message, state: FSMContext):
-        PurchaseProcessor.check_purchase_status(
-            user_id=message.chat.id, session=next(get_database_session())
+    async def start_quiz_with_topic_words(message: Message, state: FSMContext):
+        UserActivityProcessor.user_play_special_mode(
+            user_id=message.chat.id, mode_name="HOUSE WORDS"
         )
-        need_sub_levels = [
-            UserSubscriptionLevels.FREE_TERM,
-            UserSubscriptionLevels.START,
-            UserSubscriptionLevels.PRO,
-            UserSubscriptionLevels.PROMOCODE,
-        ]
+        special_words_from_cache = words_redis_client.get(
+            name=WordsCache.SPECIAL_WORDS.value,
+        )
+        if special_words_from_cache:
+            file_data_in_bytes = special_words_from_cache
 
-        if await PurchaseProcessor.compare_user_action_with_sub_level(
-                request=CheckUserActionByCurrentSub(
-                    user_id=message.chat.id, required_sub_levels=need_sub_levels
-                )
-        ):
-            file_path = "constants/files/TRAVEL WORDS.xlsx"
-            file_content_type = os.path.splitext(file_path)[1]
+        else:
+            file_path = "constants/files/HOUSE WORDS.xlsx"
 
             with open(file_path, "rb") as file:
                 file_data_in_bytes = file.read()
 
-            await QuizProcessor.process_xlsx_file(
-                message=message,
-                file_content_type=file_content_type,
-                state=state,
-                file_data_in_bytes=file_data_in_bytes,
+            words_redis_client.set(
+                name=WordsCache.SPECIAL_WORDS.value,
+                value=file_data_in_bytes,
             )
 
-        else:
-            await message.answer(
-                InteractivePhrases.LOW_SUBSCRIPTION_LEVEL.value,
-                reply_markup=ButtonOrchestrator.set_subscription_buttons(),
-            )
-            return
+        await QuizProcessor.process_xlsx_file(
+            message=message,
+            file_content_type=".xlsx",
+            state=state,
+            file_data_in_bytes=file_data_in_bytes,
+        )
 
     @staticmethod
     async def start_quiz_with_users_previous_file(message: Message, state: FSMContext):
-        PurchaseProcessor.check_purchase_status(
-            user_id=message.chat.id, session=next(get_database_session())
+        await message.answer(
+            InteractivePhrases.SUCCESS_GET_PREVIOUS_FILE.value,
+            disable_notification=True,
         )
 
-        need_sub_levels = [
-            UserSubscriptionLevels.FREE_TERM,
-            UserSubscriptionLevels.SIMPLE,
-            UserSubscriptionLevels.START,
-            UserSubscriptionLevels.PRO,
-            UserSubscriptionLevels.PROMOCODE,
-        ]
-
-        if await PurchaseProcessor.compare_user_action_with_sub_level(
-                request=CheckUserActionByCurrentSub(
-                    user_id=message.chat.id, required_sub_levels=need_sub_levels
-                )
-        ):
-            await message.answer(InteractivePhrases.SUCCESS_GET_PREVIOUS_FILE.value)
-
-            file_response = None
-            try:
-                file_response = storage_client.get_object(
-                    bucket_name=MINIO_BUCKET_NAME, object_name=f"{message.chat.id}.xlsx"
-                )
-                file_data_in_bytes: bytes = file_response.read()
-
-            except Exception as e:
-                await message.answer(InteractivePhrases.EMPTY_FILE.value)
-                print(f"\nUSER BUG. USER ID {message.chat.id}")
-                print(str(e), "\n")
-                return
-
-            finally:
-                if file_response:
-                    file_response.close()
-                    file_response.release_conn()
-
-            await state.update_data(
-                {StateKeys.UPLOADED_FILE_DATA.value: file_data_in_bytes}
+        file_response = None
+        try:
+            file_response = storage_client.get_object(
+                bucket_name=MINIO_BUCKET_NAME, object_name=f"{message.chat.id}.xlsx"
             )
+            file_data_in_bytes: bytes = file_response.read()
 
-            if (
-                    await QuizProcessor.stop_quiz(message=message, state=state)
-                    or not message.text
-            ):
-                return
-
-            await QuizProcessor.handler_quiz_start(message=message, state=state)
-
-        else:
+        except Exception as e:
             await message.answer(
-                InteractivePhrases.LOW_SUBSCRIPTION_LEVEL.value,
-                reply_markup=ButtonOrchestrator.set_subscription_buttons(),
+                InteractivePhrases.EMPTY_FILE.value, disable_notification=True
             )
+            print(f"\nUSER BUG. USER ID {message.chat.id}")
+            print(str(e), "\n")
             return
+
+        finally:
+            if file_response:
+                file_response.close()
+                file_response.release_conn()
+
+        await state.update_data(
+            {StateKeys.UPLOADED_FILE_DATA.value: file_data_in_bytes}
+        )
+
+        if (
+                await QuizProcessor.stop_quiz(message=message, state=state)
+                or not message.text
+        ):
+            return
+
+        await QuizProcessor.handler_quiz_start(message=message, state=state)
 
     @staticmethod
     async def start_quiz_with_new_file(message: Message, state: FSMContext):
-        await SubscriptionProcessor.check_purchase_status(message=message)
-
-        need_sub_levels = [
-            UserSubscriptionLevels.FREE_TERM,
-            UserSubscriptionLevels.SIMPLE,
-            UserSubscriptionLevels.START,
-            UserSubscriptionLevels.PRO,
-            UserSubscriptionLevels.PROMOCODE,
-        ]
-
-        if await PurchaseProcessor.compare_user_action_with_sub_level(
-                request=CheckUserActionByCurrentSub(
-                    user_id=message.chat.id, required_sub_levels=need_sub_levels
-                )
-        ):
-            await state.set_state(AvailableStates.awaiting_file_upload)
-
-        else:
-            await message.answer(
-                InteractivePhrases.LOW_SUBSCRIPTION_LEVEL.value,
-                reply_markup=ButtonOrchestrator.set_subscription_buttons(),
-            )
-            return
+        await state.set_state(AvailableStates.awaiting_file_upload)

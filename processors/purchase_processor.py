@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 import requests
@@ -14,6 +14,7 @@ from api.routers.subscriptions.schemas import (
     GetSubscriptionLinkRequest,
     GetSubscriptionLinkResponse,
 )
+from config.api_config import GLOBAL_SERVER_HOST
 from config.banking_integration_config import (
     MONO_API_URL,
     MONO_TOKEN,
@@ -27,7 +28,7 @@ from constants.constants import (
 )
 from constants.exceptions import PurchaseRequestExceptions
 from models import PurchaseRegistry, UserSubscriptionLevels, UserData
-from services.cache_service import (
+from services.cache_service.cache_service import (
     cache_user_sub_redis_client,
     USER_SUB_CACHE_STORES_IN_SEC,
 )
@@ -46,6 +47,7 @@ class PurchaseProcessor:
     ) -> GetSubscriptionLinkResponse:
         request_body = {
             "amount": request.cost_in_dollar,
+            "webHookUrl": f"http://{GLOBAL_SERVER_HOST}:8000/subscriptions/monobank/webhook",
             "ccy": USD_CODE,
             "merchantPaymInfo": {
                 "reference": str(uuid.uuid4()),
@@ -70,10 +72,11 @@ class PurchaseProcessor:
             headers={"X-Token": MONO_TOKEN},
             json=request_body,
         )
+
         if response.status_code == 200:
             new_purchase = PurchaseRegistry(
                 user_id=request.user_id,
-                purchase_datetime=str(datetime.utcnow()),
+                purchase_datetime=str(datetime.now()),
                 invoice_id=response.json()["invoiceId"],
             )
             session.add(new_purchase)
@@ -89,10 +92,12 @@ class PurchaseProcessor:
     def check_purchase_status(
             user_id: int, session: Session
     ) -> CheckPurchaseStatusResponse:
-        month_ago = datetime.utcnow() - timedelta(days=SUBSCRIPTION_PERIOD)
-        query = select(UserData).where(UserData.user_id == user_id)
-        user_instance = session.execute(query).scalar()
+        SUBSCRIPTION_LEVELS = [
+            UserSubscriptionLevels.PRO,
+        ]
 
+        month_ago = datetime.now() - timedelta(days=SUBSCRIPTION_PERIOD)
+        user_instance = session.get(UserData, user_id)
         need_check_user_sub_level = (
                 user_instance.subscription_level != UserSubscriptionLevels.FREE_TERM
                 or not cache_user_sub_redis_client.get(f"subscription_valid:{user_id}")
@@ -110,55 +115,38 @@ class PurchaseProcessor:
 
             invoice_ids = session.execute(query).scalars().all()
 
-            if not invoice_ids:
-                return CheckPurchaseStatusResponse(valid=False)
+            if invoice_ids:
+                for invoice_id in invoice_ids:
+                    response = requests.get(
+                        url=f"{MONO_API_URL}/api/merchant/invoice/status?invoiceId={invoice_id}",
+                        headers={"X-Token": MONO_TOKEN},
+                    )
 
-            for invoice_id in invoice_ids:
-                invoice_data = requests.get(
-                    url=f"{MONO_API_URL}/api/merchant/invoice/status?invoiceId={invoice_id}",
-                    headers={"X-Token": MONO_TOKEN},
-                )
+                    if response.status_code != 200:
+                        continue
 
-                invoice_data_json = invoice_data.json()
-                if (
-                        invoice_data.status_code == 200
-                        and invoice_data_json["status"] == "success"
-                ):
-                    if (
-                            UserSubscriptionLevels.SIMPLE.value
-                            in invoice_data_json["destination"]
-                    ):
-                        user_instance.subscription_level = UserSubscriptionLevels.SIMPLE
-                        cache_user_sub_redis_client.set(
-                            name=f"subscription_valid:{user_id}",
-                            value=UserSubscriptionLevels.SIMPLE.value,
-                            ex=USER_SUB_CACHE_STORES_IN_SEC,
-                        )
-                        return CheckPurchaseStatusResponse(valid=True)
+                    data = response.json()
+                    if data.get("status") != "success":
+                        continue
 
-                    elif (
-                            UserSubscriptionLevels.START.value
-                            in invoice_data_json["destination"]
-                    ):
-                        user_instance.subscription_level = UserSubscriptionLevels.START
-                        cache_user_sub_redis_client.set(
-                            name=f"subscription_valid:{user_id}",
-                            value=UserSubscriptionLevels.START.value,
-                            ex=USER_SUB_CACHE_STORES_IN_SEC,
-                        )
-                        return CheckPurchaseStatusResponse(valid=True)
+                    destination = data.get("destination", "")
+                    for level in SUBSCRIPTION_LEVELS:
+                        if level.value in destination:
+                            user_instance.subscription_level = level
+                            user_instance.subscription_date = datetime.strptime(
+                                data["modifiedDate"], "%Y-%m-%dT%H:%M:%SZ"
+                            ).replace(tzinfo=timezone.utc)
 
-                    elif (
-                            UserSubscriptionLevels.PRO.value
-                            in invoice_data_json["destination"]
-                    ):
-                        user_instance.subscription_level = UserSubscriptionLevels.PRO
-                        cache_user_sub_redis_client.set(
-                            name=f"subscription_valid:{user_id}",
-                            value=UserSubscriptionLevels.PRO.value,
-                            ex=USER_SUB_CACHE_STORES_IN_SEC,
-                        )
-                        return CheckPurchaseStatusResponse(valid=True)
+                            cache_user_sub_redis_client.set(
+                                name=f"subscription_valid:{user_id}",
+                                value=level.value,
+                                ex=USER_SUB_CACHE_STORES_IN_SEC,
+                            )
+
+                            session.commit()
+                            return CheckPurchaseStatusResponse(valid=True)
+
+            return CheckPurchaseStatusResponse(valid=False)
 
         return CheckPurchaseStatusResponse(valid=True)
 
