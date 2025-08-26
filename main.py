@@ -278,7 +278,6 @@ async def handle_skip_word(callback: CallbackQuery, state: FSMContext):
 
 
 if __name__ == "__main__":
-    # gcloud compute ssh egorka_voitenko@clarity-bot-vm
     # docker exec -it clanitylang-postgres-1 psql -U <username> <database_user>
     upload_files_to_cache()
     init_tables()
